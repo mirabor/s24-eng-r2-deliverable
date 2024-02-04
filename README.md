@@ -48,7 +48,7 @@ To set up the starter code for _Biodiversity Hub_, follow these instructions in 
 
 #### Install `npm` and `node`
 
-You should first update your `npm` and `node` packages to the latest version by following this [installation guide](https://kinsta.com/blog/how-to-install-node-js/#how-to-install-nodejs-on-macos). (If you use a Node versioning manager like `nvm`, you can just update through there.)
+You should first update your `npm` and `node` packages to the latest version by following this [installation guide]. (If you use a Node versioning manager like `nvm`, you can just update through there.)
 
 #### Clone repository
 
@@ -87,10 +87,10 @@ git clone git@github.com:hcs-t4sg/s24-eng-r2-deliverable.git
 
   ```bash
   added 414 packages, and audited 415 packages in 13s
-  
+
   149 packages are looking for funding
   run `npm fund` for details
-  
+
   found 0 vulnerabilities
   ```
 
