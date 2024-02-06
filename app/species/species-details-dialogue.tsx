@@ -7,18 +7,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import type { Database } from "@/lib/schema";
-
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/components/ui/use-toast";
+import { createBrowserSupabaseClient } from "@/lib/client-utils";
+import { type Database } from "@/lib/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { type BaseSyntheticEvent } from "react";
+import { useRouter } from "next/navigation";
+import { useState, type BaseSyntheticEvent, type MouseEvent } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-
-import { useState } from "react";
 
 type Species = Database["public"]["Tables"]["species"]["Row"];
 
@@ -54,13 +54,12 @@ const speciesSchema = z.object({
 
 type FormData = z.infer<typeof speciesSchema>;
 
-/* I did something with displaying the form wrong somewhere in workshop 1, it is probably in page.tsx? */
+// Define the form and its submission handler
+export default function SpeciesDetailsDialog({ species, currentUser }: { species: Species; currentUser: string }) {
+  const router = useRouter();
+  // Define the state for the editing mode
+  const [isEditing, setisEditing] = useState(false);
 
-export default function SpeciesDetailsDialog({ species }: { species: Species }) {
-  const [open, setOpen] = useState<boolean>(false);
-  const [isEditing, setIsEditing] = useState(false);
-
-  // Default values for the form fields.
   const defaultValues: Partial<FormData> = {
     scientific_name: species.scientific_name,
     common_name: species.common_name,
@@ -70,30 +69,55 @@ export default function SpeciesDetailsDialog({ species }: { species: Species }) 
     description: species.description,
   };
 
-  /* did I do this right? */
   const form = useForm<FormData>({
     resolver: zodResolver(speciesSchema),
     defaultValues,
     mode: "onChange",
   });
 
-  const onSubmit = (input: FormData) => {
-    console.log(input);
+  // Define the form submission handler
+  const onSubmit = async (input: FormData) => {
+    const supabase = createBrowserSupabaseClient();
+
+    const { error } = await supabase.from("species").update(input).eq("id", species.id);
+
+    if (error) {
+      return toast({
+        title: "Something went wrong.",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+
+    setisEditing(false);
+
+    form.reset(input);
+
+    router.refresh();
+
+    return toast({
+      title: "Changes saved!",
+      description: "Saved your changes to " + input.scientific_name + ".",
+    });
   };
 
-  const startEditing = (e: React.MouseEvent<HTMLButtonElement>) => {
+  // Define the startEditing functions
+  const startEditing = (e: MouseEvent) => {
     e.preventDefault();
-    setIsEditing(true);
+    setisEditing(true);
   };
 
-  const handleCancel = (e: React.MouseEvent<HTMLButtonElement>) => {
+  // Define the handleCancel function
+  const handleCancel = (e: MouseEvent) => {
+    // OK: true
+    // Cancel: false
     e.preventDefault();
     if (!window.confirm("Revert all unsaved changes?")) {
       return;
     }
 
     form.reset(defaultValues);
-    setIsEditing(false);
+    setisEditing(false);
   };
 
   return (
@@ -106,7 +130,6 @@ export default function SpeciesDetailsDialog({ species }: { species: Species }) 
           <DialogTitle>{species.scientific_name}</DialogTitle>
           {species.common_name && <DialogDescription>{species.common_name}</DialogDescription>}
         </DialogHeader>
-        {/* # form from workshop 2 */}
         <Form {...form}>
           <form onSubmit={(e: BaseSyntheticEvent) => void form.handleSubmit(onSubmit)(e)}>
             <div className="grid w-full items-center gap-4">
@@ -146,10 +169,14 @@ export default function SpeciesDetailsDialog({ species }: { species: Species }) 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Kingdom</FormLabel>
-                    <Select onValueChange={(value) => field.onChange(kingdoms.parse(value))} value={field.value}>
+                    <Select
+                      disabled={!isEditing}
+                      onValueChange={(value) => field.onChange(kingdoms.parse(value))}
+                      value={field.value}
+                    >
                       <FormControl>
-                        <SelectTrigger disabled={!isEditing}>
-                          <SelectValue placeholder={field.value} />
+                        <SelectTrigger>
+                          <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -173,12 +200,12 @@ export default function SpeciesDetailsDialog({ species }: { species: Species }) 
                   const { value, ...rest } = field;
                   return (
                     <FormItem>
-                      <FormLabel>Total population</FormLabel>
+                      <FormLabel> Total population</FormLabel>
                       <FormControl>
                         {/* Using shadcn/ui form with number: https://github.com/shadcn-ui/ui/issues/421 */}
                         <Input
-                          type="number"
                           readOnly={!isEditing}
+                          type="number"
                           value={value ?? ""}
                           {...rest}
                           onChange={(event) => field.onChange(+event.target.value)}
@@ -223,22 +250,24 @@ export default function SpeciesDetailsDialog({ species }: { species: Species }) 
                   );
                 }}
               />
-              <div className="flex">
-                {isEditing ? (
-                  <>
-                    <Button type="submit" className="ml-1 mr-1 flex-auto">
-                      Confirm
+              {species.author === currentUser && (
+                <div className="flex">
+                  {isEditing ? (
+                    <>
+                      <Button type="submit" className="ml-1 mr-1 flex-auto">
+                        Confirm
+                      </Button>
+                      <Button onClick={handleCancel} type="button" className="ml-1 mr-1 flex-auto" variant="secondary">
+                        Cancel
+                      </Button>
+                    </>
+                  ) : (
+                    <Button onClick={startEditing} type="button" className="ml-1 mr-1 flex-auto">
+                      Edit Species
                     </Button>
-                    <Button onClick={handleCancel} type="button" className="ml-1 mr-1 flex-auto" variant="secondary">
-                      Cancel
-                    </Button>
-                  </>
-                ) : (
-                  <Button onClick={startEditing} type="button" className="ml-1 mr-1 flex-auto">
-                    Edit species
-                  </Button>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           </form>
         </Form>
