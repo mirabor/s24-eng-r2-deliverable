@@ -150,7 +150,7 @@ export default function SpeciesDetailsDialog({ species, currentUser }: { species
       return;
     }
 
-    form.handleSubmit(onDelete)(e);
+    void form.handleSubmit(onDelete)(e);
   };
 
   return (
