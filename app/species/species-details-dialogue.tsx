@@ -55,6 +55,7 @@ const speciesSchema = z.object({
 type FormData = z.infer<typeof speciesSchema>;
 
 // Define the form and its submission handler
+// eslint-disable-next-line @typescript-eslint/ban-types
 export default function SpeciesDetailsDialog({ species, currentUser }: { species: Species; currentUser: string }) {
   const router = useRouter();
   // Define the state for the editing mode
@@ -83,7 +84,7 @@ export default function SpeciesDetailsDialog({ species, currentUser }: { species
 
     if (error) {
       return toast({
-        title: "Something went wrong.",
+        title: "Something went wrong. RIP",
         description: error.message,
         variant: "destructive",
       });
@@ -118,6 +119,38 @@ export default function SpeciesDetailsDialog({ species, currentUser }: { species
 
     form.reset(defaultValues);
     setisEditing(false);
+  };
+
+  const onDelete = async (input: FormData) => {
+    try {
+      const supabase = createBrowserSupabaseClient();
+      const { error } = await supabase.from("species").delete().eq("id", species.id);
+
+      if (error) {
+        throw error;
+      }
+
+      router.refresh();
+
+      return toast({
+        title: "Successfully deleted!",
+        description: "Species " + input.scientific_name + " has been deleted.",
+      });
+    } catch (error) {
+      return toast({
+        title: "Something went wrong. womp womp",
+        description: error instanceof Error ? error.message : "Idk what went wrong sorry",
+        variant: "destructive",
+      });
+    }
+  };
+  const handleDelete = (e: BaseSyntheticEvent) => {
+    e.preventDefault();
+    if (!window.confirm("Are you sure you want to delete this?")) {
+      return;
+    }
+
+    form.handleSubmit(onDelete)(e);
   };
 
   return (
@@ -262,9 +295,14 @@ export default function SpeciesDetailsDialog({ species, currentUser }: { species
                       </Button>
                     </>
                   ) : (
-                    <Button onClick={startEditing} type="button" className="ml-1 mr-1 flex-auto">
-                      Edit Species
-                    </Button>
+                    <>
+                      <Button onClick={startEditing} type="button" className="ml-1 mr-1 flex-auto">
+                        Edit Species
+                      </Button>
+                      <Button onClick={handleDelete} type="button" className="ml-1 mr-1 flex-auto" variant="secondary">
+                        Delete species
+                      </Button>
+                    </>
                   )}
                 </div>
               )}
