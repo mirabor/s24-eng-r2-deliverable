@@ -16,9 +16,8 @@ import React from "react";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
-// Defining the UserProfileProps interface
 interface UserProfileProps {
-  profile: Profile; // Adjusted to accept the Profile type
+  profile: Profile;
 }
 
 const UserProfile: React.FC<UserProfileProps> = ({ profile }: { profile: Profile }) => {
